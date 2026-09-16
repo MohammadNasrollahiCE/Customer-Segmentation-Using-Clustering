@@ -2,6 +2,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
+from sklearn.manifold import TSNE
 
 def kmeans_pipeline(
     X,
@@ -36,3 +37,9 @@ def kmeans_pipeline(
     print(f"Best Silhouette Score: {best_score:.4f}")
 
     return best_model
+
+def tsne_model(X_data):
+    model = TSNE()
+    model_transformed = model.fit_transform(X_data)
+
+    return model_transformed
