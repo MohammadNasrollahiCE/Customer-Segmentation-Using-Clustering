@@ -1,3 +1,4 @@
+# K-Means Clustering
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
@@ -38,8 +39,20 @@ def kmeans_pipeline(
 
     return best_model
 
+# t-SNE model implementation
 def tsne_model(X_data):
     model = TSNE()
     model_transformed = model.fit_transform(X_data)
 
     return model_transformed
+
+# Hierarchical clustering
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import silhouette_score
+from scipy.cluster.hierarchy import linkage
+
+def Hierarchical_cluster_scp(X_data, method_s):
+    X_scaled = StandardScaler().fit_transform(X_data)
+
+    model = linkage(X_scaled, method= method_s)
+    return model
