@@ -1,4 +1,3 @@
-# K-Means Clustering
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
@@ -67,12 +66,18 @@ def tsne_model(X_data):
     return model_transformed
 
 # Hierarchical clustering
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.metrics import silhouette_score
-from scipy.cluster.hierarchy import linkage
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from scipy.cluster.hierarchy import linkage, fcluster
 
 def Hierarchical_cluster_scp(X_data, method_s):
     X_scaled = StandardScaler().fit_transform(X_data)
 
     model = linkage(X_scaled, method= method_s)
+
+    for k in range(2 , 11):
+        labels = fcluster(model, t = k, criterion= 'maxclust')
+        print(f"K : {k} , silhouette Score : {silhouette_score(X_scaled, labels)}\n\
+                \tcalinski harabasz score : {calinski_harabasz_score(X_scaled, labels)}\n\
+                \tdavies bouldin score : {davies_bouldin_score(X_scaled, labels)}\n\n")
+
     return model
