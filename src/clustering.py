@@ -169,3 +169,66 @@ def hdbscan_grid(X_data, min_cluster_size, min_samples):
 
     print(f"\nBest: mcs={best_params[0]}, ms={best_params[1]}, sil={best_score:.3f}")
     return best_labels
+
+# GMM Model implementation
+from sklearn.mixture import GaussianMixture
+import pandas as pd
+
+def GMM_model(X_data, return_type):
+    X_scaled = StandardScaler().fit_transform(X_data)
+    best_score_b, best_score_a, best_labels, best_params = np.inf, np.inf, None, None
+    best_model= None
+    covariance_types = ['full', 'tied', 'diag', 'spherical']
+    results = []
+
+    for cov in covariance_types:
+        for k in range(2,11):
+            model = GaussianMixture(n_components= k, covariance_type= cov, random_state= 42, n_init= 30)
+            labels = model.fit_predict(X_scaled)
+
+            if k >= 2:
+                score_BIC = model.bic(X_scaled)
+                score_AIC = model.aic(X_scaled)
+                print(f"k={k}, cov={cov}, BIC={score_BIC:.2f}, AIC={score_AIC:.2f}")
+
+                results.append({
+                    "n_components": k,
+                    "covariance_type": cov,
+                    "BIC": score_BIC,
+                    "AIC": score_AIC
+                })
+
+                if score_BIC < best_score_b:
+                    best_score_a = score_AIC
+                    best_score_b = score_BIC
+                    best_labels = labels
+                    best_params = (k, cov)
+                    best_model = model
+
+    print("----------------------------------------------------------------------------------")
+    print(f"\nBest: best k={best_params[0]}, best cov={best_params[1]}, best BIC={best_score_b:.2f}, best AIC={best_score_a:.2f}")
+
+    df_results = pd.DataFrame(results)
+    for cov in df_results['covariance_type'].unique():
+        df_cov = df_results[df_results['covariance_type'] == cov]
+
+        plt.plot(df_cov['n_components'], df_cov['BIC'], marker='o', label=cov)
+
+    plt.xlabel('Number of Components')
+    plt.ylabel('BIC')
+    plt.xticks(range(2, 11))
+    plt.grid()
+    plt.legend()
+    plt.show()
+
+    if return_type == 'proba':
+        proba = best_model.predict_proba(X_scaled)
+        proba_df = pd.DataFrame(proba, columns=[f'Cluster_{i}_Prob'
+                for i in range(best_model.n_components)])
+
+        return proba_df
+
+    elif return_type == 'labels':
+        return best_labels
+    elif return_type == 'model':
+        return best_model
