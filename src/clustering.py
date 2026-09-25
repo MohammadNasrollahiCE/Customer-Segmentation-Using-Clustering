@@ -81,3 +81,91 @@ def Hierarchical_cluster_scp(X_data, method_s):
                 \tdavies bouldin score : {davies_bouldin_score(X_scaled, labels)}\n\n")
 
     return model
+
+# DBSCAN 
+# K-Distance Graph 
+
+import numpy as np
+from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
+ 
+def k_distance_graph(X_data):
+    # Scaling the data
+    X_scaleed = StandardScaler().fit_transform(X_data)
+    min_samples = 2 * X_scaleed.shape[1]
+
+    # Finding the nearest neighbors
+    nearest_neighbors = NearestNeighbors(n_neighbors= min_samples)
+    nearest_neighbors.fit(X_scaleed)
+
+    # Calculate the different amung nearest neighbors
+    dist, _ = nearest_neighbors.kneighbors(X_scaleed)
+    kdist = np.sort(dist[:, -1])
+
+    # drow k distance graph
+    plt.plot(kdist)
+    plt.ylabel(f"{min_samples}-th neighbor distance")
+    plt.xlabel('Points sorted by distance')
+    plt.ylabel('Distance "eps select"')
+    plt.title('K-Distance Graph')
+    plt.grid()
+    plt.show()
+
+
+# DBSCAN algorithm implementation
+def dbscan_grid(X_data, eps_range):
+    X_scaled = StandardScaler().fit_transform(X_data)
+    min_samples = 2 * X_scaled.shape[1]
+    best_score, best_labels, best_eps = -1, None, None
+
+    for eps in eps_range:
+        labels = DBSCAN(eps=eps, min_samples=min_samples).fit_predict(X_scaled)
+
+        mask = labels != -1
+        n_clusters = len(set(labels[mask]))
+        noise_ratio = 1 - mask.mean()
+
+        if n_clusters >= 2:
+            score = silhouette_score(X_scaled[mask], labels[mask])
+            print(f"eps={eps:.2f}  k={n_clusters}  noise={noise_ratio:.1%}  sil={score:.3f}")
+            if score > best_score:
+                best_score = score
+                best_labels = labels
+                best_eps = eps
+        else:
+            print(f"eps={eps:.2f}  k={n_clusters}  noise={noise_ratio:.1%}  (Just One Cluster)")
+
+    print("------------------------------------------------------------------------")
+    if best_eps is None:
+        print("eps is None. One cluster")
+    else:
+        best_mask = best_labels != -1
+        print(f"\nBest: eps={best_eps:.2f}, k={len(set(best_labels[best_mask]))}, "
+              f"noise={1 - best_mask.mean():.1%}, sil={best_score:.3f}")
+
+    return best_labels
+
+# HDBSCAN algorithm implementation
+from sklearn.cluster import HDBSCAN
+
+def hdbscan_grid(X_data, min_cluster_size, min_samples):
+    X_scaled = StandardScaler().fit_transform(X_data)
+    best_score, best_labels, best_params = -1, None, None
+
+    for mcs in min_cluster_size:
+        for ms in min_samples:
+            model = HDBSCAN(min_cluster_size=mcs, min_samples=ms, copy= True)
+            labels = model.fit_predict(X_scaled)
+
+            mask = labels != -1
+            k = len(set(labels[mask]))
+            noise = 1 - mask.mean()
+
+            if k >= 2:
+                score = silhouette_score(X_scaled[mask], labels[mask])
+                print(f"mcs={mcs} ms={ms} k={k} noise={noise:.1%} sil={score:.3f}")
+                if score > best_score:
+                    best_score, best_labels, best_params = score, labels, (mcs, ms)
+
+    print(f"\nBest: mcs={best_params[0]}, ms={best_params[1]}, sil={best_score:.3f}")
+    return best_labels
