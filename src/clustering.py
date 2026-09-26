@@ -16,7 +16,7 @@ def kmeans_pipeline(
     X,
     k_range = range(2 , 31),
     n_init = 20,
-    random_state= 45,
+    random_state= 42,
     init= 'k-means++'
 ):
     best_score = -1
