@@ -4,7 +4,14 @@ from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
+from sklearn.cluster import HDBSCAN
+from sklearn.mixture import GaussianMixture
+import pandas as pd
 
+# K-Means model implementation and parameter tuner
 def kmeans_pipeline(
     X,
     k_range = range(2 , 31),
@@ -40,6 +47,7 @@ def kmeans_pipeline(
 
         print(f"K : {k}, Score : {score}")
        
+       #finding best k
         if score > best_score:
             best_score = score
             best_model = pipeline
@@ -58,12 +66,16 @@ def kmeans_pipeline(
 
     return best_model
 
+#----------------------------------------------------------------------
+
 # t-SNE model implementation
 def tsne_model(X_data):
     model = TSNE()
     model_transformed = model.fit_transform(X_data)
 
     return model_transformed
+
+#-----------------------------------------------------------------------
 
 # Hierarchical clustering
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
@@ -74,6 +86,7 @@ def Hierarchical_cluster_scp(X_data, method_s):
 
     model = linkage(X_scaled, method= method_s)
 
+    # select best k
     for k in range(2 , 11):
         labels = fcluster(model, t = k, criterion= 'maxclust')
         print(f"K : {k} , silhouette Score : {silhouette_score(X_scaled, labels)}\n\
@@ -82,13 +95,9 @@ def Hierarchical_cluster_scp(X_data, method_s):
 
     return model
 
-# DBSCAN 
-# K-Distance Graph 
+#-----------------------------------------------------------------------
 
-import numpy as np
-from sklearn.cluster import DBSCAN
-from sklearn.neighbors import NearestNeighbors
- 
+# K-Distance Graph for DBSCAN
 def k_distance_graph(X_data):
     # Scaling the data
     X_scaleed = StandardScaler().fit_transform(X_data)
@@ -111,22 +120,27 @@ def k_distance_graph(X_data):
     plt.grid()
     plt.show()
 
+#-----------------------------------------------------------------------
 
-# DBSCAN algorithm implementation
+# DBSCAN algorithm implementation and parameter tuner
 def dbscan_grid(X_data, eps_range):
     X_scaled = StandardScaler().fit_transform(X_data)
     min_samples = 2 * X_scaled.shape[1]
     best_score, best_labels, best_eps = -1, None, None
 
+    # finding best eps
     for eps in eps_range:
         labels = DBSCAN(eps=eps, min_samples=min_samples).fit_predict(X_scaled)
 
+        # removing negetive values for scoring
         mask = labels != -1
         n_clusters = len(set(labels[mask]))
         noise_ratio = 1 - mask.mean()
 
+        # scoreing and selecting best parameters
         if n_clusters >= 2:
             score = silhouette_score(X_scaled[mask], labels[mask])
+            # print all parameters for any model
             print(f"eps={eps:.2f}  k={n_clusters}  noise={noise_ratio:.1%}  sil={score:.3f}")
             if score > best_score:
                 best_score = score
@@ -135,6 +149,7 @@ def dbscan_grid(X_data, eps_range):
         else:
             print(f"eps={eps:.2f}  k={n_clusters}  noise={noise_ratio:.1%}  (Just One Cluster)")
 
+    # print best parameters
     print("------------------------------------------------------------------------")
     if best_eps is None:
         print("eps is None. One cluster")
@@ -145,35 +160,38 @@ def dbscan_grid(X_data, eps_range):
 
     return best_labels
 
-# HDBSCAN algorithm implementation
-from sklearn.cluster import HDBSCAN
+#-----------------------------------------------------------------------
 
+# HDBSCAN algorithm implementation with parameter tuning
 def hdbscan_grid(X_data, min_cluster_size, min_samples):
     X_scaled = StandardScaler().fit_transform(X_data)
     best_score, best_labels, best_params = -1, None, None
 
+    # finding best parameters
     for mcs in min_cluster_size:
         for ms in min_samples:
             model = HDBSCAN(min_cluster_size=mcs, min_samples=ms, copy= True)
             labels = model.fit_predict(X_scaled)
 
+            # removing negetive values fo scoring and calculating k and noise ration
             mask = labels != -1
             k = len(set(labels[mask]))
             noise = 1 - mask.mean()
 
+            # print all of parameters for any model
             if k >= 2:
                 score = silhouette_score(X_scaled[mask], labels[mask])
                 print(f"mcs={mcs} ms={ms} k={k} noise={noise:.1%} sil={score:.3f}")
                 if score > best_score:
                     best_score, best_labels, best_params = score, labels, (mcs, ms)
 
+    # print best parameters
     print(f"\nBest: mcs={best_params[0]}, ms={best_params[1]}, sil={best_score:.3f}")
     return best_labels
 
-# GMM Model implementation
-from sklearn.mixture import GaussianMixture
-import pandas as pd
+#-----------------------------------------------------------------------
 
+# GMM Model implementation with parameter tuning
 def GMM_model(X_data, return_type):
     X_scaled = StandardScaler().fit_transform(X_data)
     best_score_b, best_score_a, best_labels, best_params = np.inf, np.inf, None, None
@@ -181,16 +199,19 @@ def GMM_model(X_data, return_type):
     covariance_types = ['full', 'tied', 'diag', 'spherical']
     results = []
 
+    # finding best parameters
     for cov in covariance_types:
         for k in range(2,11):
             model = GaussianMixture(n_components= k, covariance_type= cov, random_state= 42, n_init= 30)
             labels = model.fit_predict(X_scaled)
 
+            # print parameters and scores for any model
             if k >= 2:
                 score_BIC = model.bic(X_scaled)
                 score_AIC = model.aic(X_scaled)
                 print(f"k={k}, cov={cov}, BIC={score_BIC:.2f}, AIC={score_AIC:.2f}")
 
+                # save results
                 results.append({
                     "n_components": k,
                     "covariance_type": cov,
@@ -198,6 +219,7 @@ def GMM_model(X_data, return_type):
                     "AIC": score_AIC
                 })
 
+                # select best model and best parameters
                 if score_BIC < best_score_b:
                     best_score_a = score_AIC
                     best_score_b = score_BIC
@@ -205,9 +227,12 @@ def GMM_model(X_data, return_type):
                     best_params = (k, cov)
                     best_model = model
 
+    # print best model information
     print("----------------------------------------------------------------------------------")
     print(f"\nBest: best k={best_params[0]}, best cov={best_params[1]}, best BIC={best_score_b:.2f}, best AIC={best_score_a:.2f}")
 
+    """ save results to a pd.DataFrame to return as results and drow a k-BIC plot to 
+        visualize the parameter select results"""
     df_results = pd.DataFrame(results)
     for cov in df_results['covariance_type'].unique():
         df_cov = df_results[df_results['covariance_type'] == cov]
@@ -221,6 +246,7 @@ def GMM_model(X_data, return_type):
     plt.legend()
     plt.show()
 
+    # choos return type for return model, labels or probabilistic labels
     if return_type == 'proba':
         proba = best_model.predict_proba(X_scaled)
         proba_df = pd.DataFrame(proba, columns=[f'Cluster_{i}_Prob'
