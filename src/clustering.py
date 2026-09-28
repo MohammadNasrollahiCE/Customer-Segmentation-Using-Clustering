@@ -10,6 +10,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import HDBSCAN
 from sklearn.mixture import GaussianMixture
 import pandas as pd
+from .pca import pca_maker
 
 # K-Means model implementation and parameter tuner
 def kmeans_pipeline(
@@ -256,5 +257,57 @@ def GMM_model(X_data, return_type):
 
     elif return_type == 'labels':
         return best_labels
+
     elif return_type == 'model':
         return best_model
+
+    elif return_type == 'model, labels, BIC':
+        return best_model, best_labels, best_score_b
+
+    elif return_type == 'model, proba, BIC':
+        proba = best_model.predict_proba(X_scaled)
+        proba_df = pd.DataFrame(proba, columns=[f'Cluster_{i}_Prob'
+                for i in range(best_model.n_components)])
+
+        return model, proba_df, best_score_b
+
+#-----------------------------------------------------------------------
+
+# GMM model implementation with PCA
+def GMM_with_PCA(X_data, pca_range, labels_proba_ret):
+    pca, pca_labels = pca_maker(X_data)
+
+    best_score = -1
+    best_score_bic = np.inf
+    best_model = None
+    best_labels = None
+    best_PCAs = -1
+
+    # select the best model and labels
+    for i in range(pca_range):
+        X_pca = pca_labels[:,:i + 1]
+        
+        # training the model with PCs
+        return_type = labels_proba_ret
+        model, labels, score_bic = GMM_model(X_pca, labels_proba_ret)
+
+        # scoring with silhpuette score
+        X_scaled = StandardScaler().fit_transform(X_pca)
+        score = silhouette_score(X_scaled, labels)
+        print(f"PCs: {i + 1}, Silhouette Score: {score:.4f}")
+        print("----------------------------------------------------------------------------------")
+
+
+        # select the best model
+        if score > best_score:
+            best_score = score
+            best_score_bic = score_bic
+            best_model = model
+            best_labels = labels
+            best_PCAs = i + 1
+
+    # print the best results
+    print(f"\nBest : PCAs={best_PCAs}, score={best_score:.2f}, BIC={best_score_bic:.4f}")
+
+    # return the best results
+    return best_model, best_labels
